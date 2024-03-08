@@ -35,6 +35,15 @@
         <WarningLevel>4</WarningLevel>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleaseZip|AnyCPU' ">
+      <DebugType>pdbonly</DebugType>
+      <Optimize>true</Optimize>
+      <DefineConstants>TRACE</DefineConstants>
+      <ErrorReport>prompt</ErrorReport>
+      <WarningLevel>4</WarningLevel>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <OutputPath>bin\ReleaseZip\</OutputPath>
+    </PropertyGroup>
     <PropertyGroup>
       <PostBuildEvent>/home/marc/RiderProjects/Ritterschlag/build-post.sh $(Configuration) </PostBuildEvent>
     </PropertyGroup>
@@ -370,6 +379,7 @@
         <Compile Include="BetterHotkeys.cs" />
         <Compile Include="BetterHotkeysGUI.cs" />
         <Compile Include="CustomLogger.cs" />
+        <Compile Include="IntroSkip.cs" />
         <Compile Include="PATCH_EngineInterface.cs" />
         <Compile Include="Hotkeys.cs" />
         <Compile Include="ModOptions.cs" />

@@ -109,7 +109,6 @@ namespace Ritterschlag
 
         private static void Test()
         {
-            
             // this.menuSection = param - 1;
             // this.UpdateMenus();
         }
@@ -122,7 +121,6 @@ namespace Ritterschlag
             private static void ButtonClicked(int param)
             {
                 MelonLogger.Msg($"HUD_Options.ButtonClicked {param}");
-                
             }
         }
 
@@ -135,20 +133,20 @@ namespace Ritterschlag
             {
                 MelonLogger.Msg($"{__instance} {__instance.Name}");
 
-                Button OptionsButton = (__instance.Content as Grid).FindName("MainMenu_OptionsButton") as Button;
-                MelonLogger.Msg(OptionsButton.Name);
-                
-                Button ModsButton = XamlReader.Parse(ModButtonXml) as Button;
-                MelonLogger.Msg(ModsButton);
-                Grid parent = VisualTreeHelper.GetParent(OptionsButton) as Grid;
+                Grid FrontEndGrid = (Grid)__instance.Content;
+                Button OptionsButton = (Button) FrontEndGrid.FindName("MainMenu_OptionsButton");
+                // MelonLogger.Msg(OptionsButton.Name);
+
+                Button ModsButton = (Button)XamlReader.Parse(ModButtonXml);
+                Grid parent = (Grid)VisualTreeHelper.GetParent(OptionsButton);
                 MelonLogger.Msg(parent);
                 parent.Children.Add(ModsButton);
                 ModsButton.Visibility = Visibility.Visible;
 
-                Storyboard storyboard = (__instance.Resources["MainMenu_ShowMainMenu"] as Storyboard);
+                Storyboard storyboard = (Storyboard) __instance.Resources["MainMenu_ShowMainMenu"];
                 DoubleAnimationUsingKeyFrames OptionsButtonAnimation = storyboard.Children
                     .OfType<DoubleAnimationUsingKeyFrames>().FirstOrDefault(timeline =>
-                        Storyboard.GetTargetName(timeline) == "MainMenu_OptionsButton");                
+                        Storyboard.GetTargetName(timeline) == "MainMenu_OptionsButton");
                 MelonLogger.Msg(Storyboard.GetTargetName(OptionsButtonAnimation));
                 DoubleAnimationUsingKeyFrames ModButtonAnimation =
                     XamlReader.Parse(ModButtonAnimationXml) as DoubleAnimationUsingKeyFrames;

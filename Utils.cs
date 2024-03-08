@@ -28,6 +28,25 @@ namespace Ritterschlag
             }
         }
 
+        public static IEnumerable<T> GetFieldsRecursivelyAll<T>(object obj)
+        {
+            foreach (FieldInfo info in obj.GetType().GetFields())
+            {
+                if (info.FieldType == typeof(T) || info.FieldType.IsSubclassOf(typeof(T)))
+                {
+                    T type = (T)info.GetValue(obj);
+                    yield return type;
+                }
+                else
+                {
+                    foreach (T type in GetFieldsRecursivelyAll<T>(info.GetValue(obj)))
+                    {
+                        yield return type;
+                    }
+                }
+            }
+        }
+
         public static void dumpObject(object obj)
         {
             foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(obj))
@@ -35,6 +54,16 @@ namespace Ritterschlag
                 MelonLogger.Msg($"{descriptor.Name}={descriptor.GetValue(obj)}");
                 // Console.WriteLine("{0}={1}", name, value);
             }
+        }
+
+        public static void dumpObjectFile(object obj, string filename)
+        {
+            using StringWriter sr = new();
+            foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(obj))
+            {
+                sr.WriteLine($"{descriptor.Name}={descriptor.GetValue(obj)}");
+            }
+            File.WriteAllText(filename, sr.ToString());
         }
 
         public static bool iterateNoesisElement(DependencyObject element, Func<DependencyObject, int, bool> action)
@@ -63,31 +92,46 @@ namespace Ritterschlag
             return true;
         }
 
-        public static void iterateNoesisElement(DependencyObject element, Action<DependencyObject, int> action,
+        public static void iterateNoesisElement(DependencyObject element, Action<DependencyObject, int, int> action,
             int depth = 0)
         {
-            int childrenCount = VisualTreeHelper.GetChildrenCount(element);
-            if (childrenCount == 0)
+            // int childrenCount = VisualTreeHelper.GetChildrenCount(element);
+            int childrenCount = LogicalTreeHelper.GetChildren(element).Cast<DependencyObject>().Count();
+            action(element, childrenCount, depth);
+            foreach (DependencyObject child in LogicalTreeHelper.GetChildren(element))
             {
-                action(element, depth);
-                return;
-            }
-
-            action(element, depth);
-            for (int i = 0; i < childrenCount; i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(element, i);
                 iterateNoesisElement(child, action, depth + 1);
-                // MelonLogger.Msg(child);
             }
+            // if (childrenCount == 0)
+            // {
+            //     return;
+            // }
+            //
+            // action(element, childrenCount, depth);
+            // for (int i = 0; i < childrenCount; i++)
+            // {
+            //     DependencyObject child = VisualTreeHelper.GetChild(element, i);
+            //     iterateNoesisElement(child, action, depth + 1);
+            // }
         }
 
         public static StringBuilder iterateNoesisElement(DependencyObject element)
         {
             StringBuilder stringBuilder = new();
             iterateNoesisElement(element,
-                (o, i) => stringBuilder.Append(
-                    $"{string.Concat(Enumerable.Repeat(" ", i))}{o}{Environment.NewLine}"));
+                (o, childrenCount, depth) =>
+                {
+                    stringBuilder.Append($"{string.Concat(Enumerable.Repeat(" ", depth))}");
+                    stringBuilder.Append($"{o.GetType().FullName}");
+                    PropertyInfo nameProperty = o.GetType().GetProperty("Name");
+                    if (nameProperty != null)
+                    {
+                        stringBuilder.Append($"{{");
+                        stringBuilder.Append($"Name=\"{nameProperty.GetValue(o)}\"}}");
+                    }
+                    stringBuilder.Append(
+                        $"|{childrenCount}{Environment.NewLine}");
+                });
             return stringBuilder;
         }
 
@@ -98,10 +142,7 @@ namespace Ritterschlag
 
         public static void dumpNoesisElementToFile(DependencyObject element, string filename)
         {
-            StringBuilder stringBuilder = iterateNoesisElement(element);
-            StreamWriter sr = File.CreateText(filename);
-            sr.Write(stringBuilder.ToString());
-            sr.Close();
+            File.WriteAllText(filename, iterateNoesisElement(element).ToString());
         }
 
         public static void iterateResources(FrameworkElement frameworkElement)

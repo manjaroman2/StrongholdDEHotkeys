@@ -40,25 +40,34 @@ namespace Ritterschlag
             }
         }
 
-        public class _TabAction : HotkeyAction
+
+        public class _BaseTabAction : HotkeyAction
         {
-            private RadioButton _radioButton;
             private readonly int SubMode;
-            protected readonly MethodInfo tabMethod;
 
             public int getSubMode()
             {
                 return SubMode;
             }
 
+            protected _BaseTabAction(KeyCode key, int subMode) : base(key)
+            {
+                SubMode = subMode;
+            }
+        }
+
+        public class _TabAction : _BaseTabAction
+        {
+            private RadioButton _radioButton;
+            protected readonly MethodInfo tabMethod;
+
             public void setRadioButton(RadioButton radioButton)
             {
                 _radioButton = radioButton;
             }
 
-            protected _TabAction(int SubMode, KeyCode key, string methodName) : base(key)
+            protected _TabAction(int SubMode, KeyCode key, string methodName) : base(key, SubMode)
             {
-                this.SubMode = SubMode;
                 tabMethod = typeof(HUD_Main).GetMethod(
                     methodName,
                     BindingFlags.Public | BindingFlags.Instance,
@@ -73,25 +82,17 @@ namespace Ritterschlag
             }
         }
 
-        public class _SubTabAction : HotkeyAction
+        public class _SubTabAction : _BaseTabAction
         {
             private Button Button;
-            private readonly int SubMode;
-
-            public int getSubMode()
-            {
-                return SubMode;
-            }
 
             public void setButton(Button button)
             {
                 Button = button;
             }
 
-
-            protected _SubTabAction(int SubMode, KeyCode key, string methodName) : base(key)
+            protected _SubTabAction(int SubMode, KeyCode key, string methodName) : base(key, SubMode)
             {
-                this.SubMode = SubMode;
                 MethodInfo tabMethod = typeof(HUD_Main).GetMethod(
                     methodName,
                     BindingFlags.Public | BindingFlags.Instance,
@@ -123,7 +124,7 @@ namespace Ritterschlag
                 }
             }
 
-            public readonly _Military Military = new(KeyCode.T);
+            public readonly _Military Military = new(KeyCode.F);
             public readonly _BuildingAction StoneBarracks = new("StoneBarracks", KeyCode.A);
             public readonly _BuildingAction WoodenBarracks = new("WoodenBarracks", KeyCode.S);
             public readonly _BuildingAction Armoury = new("Armoury", KeyCode.D);
@@ -181,7 +182,7 @@ namespace Ritterschlag
                 }
             }
 
-            public readonly _Gates Gates = new(KeyCode.F);
+            public readonly _Gates Gates = new(KeyCode.G);
 
             public class _Towers : _SubTabAction
             {
@@ -196,7 +197,7 @@ namespace Ritterschlag
                 }
             }
 
-            public readonly _Towers Towers = new(KeyCode.G);
+            public readonly _Towers Towers = new(KeyCode.T);
 
             public TabCastle(KeyCode key) : base(10, key, nameof(HUD_Main.NewBuildScreenCastle))
             {
@@ -341,47 +342,59 @@ namespace Ritterschlag
             public static readonly TabFarms TabFarms = new(KeyCode.E);
             public static readonly TabTown TabTown = new(KeyCode.R);
             public static readonly TabWeapons TabWeapons = new(KeyCode.T);
-            public static readonly TabFood TabFood = new(KeyCode.A);
+            public static readonly TabFood TabFood = new(KeyCode.Y);
         }
 
         private static readonly List<_TabAction> _TabActions = typeof(TabActions)
             .GetFields(BindingFlags.Public | BindingFlags.Static).Select(info => (_TabAction)info.GetValue(null))
             .ToList();
 
-        // private static readonly Dictionary<_TabAction, List<_SubTabAction>> TabActionToSubTabActions =
-        //     _TabActions.ToDictionary(action => action, action =>
-        //         action.GetType().GetFields().Where(info => info.FieldType == typeof(_SubTabAction))
-        //             .Select(info => (_SubTabAction)info.GetValue(action)).ToList());
-        // private static readonly List<_SubTabAction> _subTabActions = _TabActions.SelectManyRecursive(o =>
-        //     o.GetType().GetFields().Where(info => info.FieldType == typeof(_SubTabAction))
-        //         .SelectManyRecursive(info => (_SubTabAction)info.GetValue(o))).ToList();
-        // private static readonly List<_SubTabAction> _SubTabActions =
-        //     TabActionToSubTabActions.Values.SelectMany(list => list).ToList();
-
         private static readonly List<_SubTabAction> _SubTabActions =
             _TabActions.SelectMany(Utils.GetFieldsRecursively<_SubTabAction>).ToList();
 
-        private static readonly Dictionary<int, _SubTabAction> SubModeToSubTabAction =
-            _SubTabActions.ToDictionary(action => action.getSubMode(), action => action);
+        private static readonly List<_BaseTabAction> _BaseTabActions =
+            _TabActions.Concat<_BaseTabAction>(_SubTabActions).ToList();
 
-        private static readonly Dictionary<_SubTabAction, List<object>> SubTabActionToHotkeyActions =
-            _SubTabActions.ToDictionary(action => action,
-                action => action.GetType().GetFields()
-                    .Where(info => typeof(HotkeyAction).IsAssignableFrom(info.FieldType))
-                    .Select(info => info.GetValue(action)).ToList());
-
-        private static readonly Dictionary<int, _TabAction> SubModeToTabAction = _TabActions
-            .ToDictionary(action => action.getSubMode(), action => action);
-
-        private static readonly Dictionary<_TabAction, List<object>> TabActionToHotkeyActions =
+        private static readonly Dictionary<_TabAction, List<HotkeyAction>> TabActionToHotkeyActions =
             _TabActions.ToDictionary(action => action,
                 action => action.GetType().GetFields()
                     .Where(info => typeof(HotkeyAction).IsAssignableFrom(info.FieldType))
-                    .Select(info => info.GetValue(action)).ToList());
+                    .Select(info => (HotkeyAction)info.GetValue(action)).ToList());
+
+        private static Dictionary<KeyCode, _TabAction> KeyCode2TabAction =
+            _TabActions.ToDictionary(action => action.key, action => action);
+
+        private static readonly Dictionary<_BaseTabAction, List<HotkeyAction>> BaseTabAction2HotkeyActions =
+            _BaseTabActions.ToDictionary(action => action,
+                action => action.GetType().GetFields()
+                    .Where(info => typeof(HotkeyAction).IsAssignableFrom(info.FieldType))
+                    .Select(info => (HotkeyAction)info.GetValue(action)).ToList());
+
+        private static readonly Dictionary<_BaseTabAction, Dictionary<KeyCode, HotkeyAction>>
+            BaseTabAction2KeyCodeHotkeyAction =
+                _BaseTabActions.ToDictionary(action => action,
+                    action => action.GetType().GetFields()
+                        .Where(info => typeof(HotkeyAction).IsAssignableFrom(info.FieldType))
+                        .Select(info => (HotkeyAction)info.GetValue(action))
+                        .ToDictionary(hotkeyAction => hotkeyAction.key, hotkeyAction => hotkeyAction));
+        
+        private static readonly Dictionary<int, _BaseTabAction> SubModeToBaseTabAction =
+            _BaseTabActions.ToDictionary(action => action.getSubMode(), action => action);
 
         private static KeyCode? LastKey;
-        private static DateTime lastKeyTime = DateTime.MinValue;
-        private static int doubleHitMillis = 200;
+        private static DateTime LastKeyTime = DateTime.MinValue;
+
+        public static int DoubleHitMillis = 200;
+
+        // private static IEnumerable<KeyCode> AllKeyCodes = Enum.GetValues(typeof(KeyCode)).Cast<KeyCode>();
+        private static IEnumerable<KeyCode>
+            AllKeyCodes = _TabActions.SelectMany(Utils.GetFieldsRecursivelyAll<KeyCode>).Distinct();
+
+        private static void UpdateAllKeyCodes()
+        {
+            KeyCode2TabAction = _TabActions.ToDictionary(action => action.key, action => action);
+            AllKeyCodes = _TabActions.SelectMany(Utils.GetFieldsRecursivelyAll<KeyCode>).Distinct();
+        }
 
         [HarmonyPatch(typeof(HUD_Main))]
         internal static class PATCH_HUD_Main
@@ -391,6 +404,11 @@ namespace Ritterschlag
             private static void POST_HUD_Main(ref HUD_Main __instance, ref Button[] ___buildButtons)
             {
                 MelonLogger.Msg($"{___buildButtons}");
+                // foreach (KeyCode allKeyCode in AllKeyCodes)
+                // {
+                //     MelonLogger.Msg($"{allKeyCode}");
+                // }
+
                 TabActions.TabCastle.setRadioButton(__instance.RefTabBuildCastle);
                 TabActions.TabCastle.Military.setButton(___buildButtons[68]);
                 TabActions.TabCastle.Gates.setButton(___buildButtons[70]);
@@ -415,73 +433,72 @@ namespace Ritterschlag
             private static void PRE_Update(ref KeyManager __instance, ref bool ___hotKeySelectorMode)
             {
                 if (___hotKeySelectorMode || Director.instance == null || !Director.instance.SimRunning) return;
+#if try
                 try
                 {
-                    int millis = (int)(DateTime.Now - lastKeyTime).TotalMilliseconds;
-                    if (LastKey == null || millis > doubleHitMillis)
+#endif
+                int millis = (int)(DateTime.Now - LastKeyTime).TotalMilliseconds;
+                if (LastKey == null || millis > DoubleHitMillis)
+                {
+                    if (SubModeToBaseTabAction.TryGetValue(MainViewModel.Instance.SubMode,
+                            out _BaseTabAction baseTabAction))
                     {
-                        // MelonLogger.Msg(millis);
-                        if (SubModeToTabAction.TryGetValue(MainViewModel.Instance.SubMode, out _TabAction tabAction))
+                        // List<HotkeyAction> HotkeyActions = BaseTabAction2HotkeyActions[baseTabAction];
+                        Dictionary<KeyCode, HotkeyAction> KeyCodeToHotkeyAction =
+                            BaseTabAction2KeyCodeHotkeyAction[baseTabAction];
+                        foreach (KeyCode key in AllKeyCodes.Where(Input.GetKeyDown))
                         {
-                            foreach (HotkeyAction hotkeyAction in TabActionToHotkeyActions[tabAction]
-                                         .Cast<HotkeyAction>()
-                                         .Where(hotkeyAction => Input.GetKeyDown(hotkeyAction.key)))
+                            if (KeyCodeToHotkeyAction.TryGetValue(key, out HotkeyAction hotkeyAction))
                             {
-                                MelonLogger.Msg(millis);
                                 MelonLogger.Msg(hotkeyAction);
                                 MelonLogger.Msg(hotkeyAction.key);
                                 hotkeyAction.Action();
-                                lastKeyTime = DateTime.Now;
-                                LastKey = hotkeyAction.key;
-                                break;
                             }
-                        }
-                        else if (SubModeToSubTabAction.TryGetValue(MainViewModel.Instance.SubMode,
-                                     out _SubTabAction subTabAction))
-                        {
-                            foreach (HotkeyAction hotkeyAction in SubTabActionToHotkeyActions[subTabAction]
-                                         .Cast<HotkeyAction>()
-                                         .Where(hotkeyAction => Input.GetKeyDown(hotkeyAction.key)))
-                            {
-                                MelonLogger.Msg(millis);
-                                MelonLogger.Msg(hotkeyAction);
-                                MelonLogger.Msg(hotkeyAction.key);
-                                hotkeyAction.Action();
-                                lastKeyTime = DateTime.Now;
-                                LastKey = hotkeyAction.key;
-                                break;
-                            }
-                        }
-                    }
-                    else if (millis < doubleHitMillis)
-                    {
-                        foreach (_TabAction tabAction in _TabActions.Where(action => action.key == LastKey))
-                        {
-                            foreach (HotkeyAction hotkeyAction in TabActionToHotkeyActions[tabAction]
-                                         .Cast<HotkeyAction>()
-                                         .Where(hotkeyAction => Input.GetKeyDown(hotkeyAction.key)))
-                            {
-                                MelonLogger.Msg("DOUBLE HIT");
-                                MelonLogger.Msg(millis);
-                                MelonLogger.Msg(hotkeyAction);
-                                MelonLogger.Msg(hotkeyAction.key);
-
-                                LastKey = null;
-                                lastKeyTime = DateTime.MinValue;
-                                tabAction.Action();
-                                hotkeyAction.Action();
-                                break;
-                            }
-
+                            LastKey = key;
+                            LastKeyTime = DateTime.Now;   
                             break;
                         }
                     }
+                    else
+                    {
+                        MelonLogger.Msg(
+                            $"module:BetterHotkeys | Unhandled SubMode: {MainViewModel.Instance.SubMode}");
+                    }
+                }
+                else if (millis < DoubleHitMillis)
+                {
+                    if (KeyCode2TabAction.TryGetValue((KeyCode)LastKey, out _TabAction tabAction))
+                    {
+                        foreach (HotkeyAction hotkeyAction in TabActionToHotkeyActions[tabAction]
+                                     .Where(hotkeyAction => Input.GetKeyDown(hotkeyAction.key)))
+                        {
+                            MelonLogger.Msg("DOUBLE HIT");
+                            MelonLogger.Msg(millis);
+                            MelonLogger.Msg(hotkeyAction);
+                            MelonLogger.Msg(hotkeyAction.key);
+
+                            MelonLogger.Msg(hotkeyAction);
+                            tabAction.Action();
+                            hotkeyAction.Action();
+
+                            LastKey = null;
+                            LastKeyTime = DateTime.MinValue;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        MelonLogger.Msg($"Key does not correspond a TabAction: {LastKey}");
+                    }
+                }
+#if try
                 }
                 catch (Exception e)
                 {
                     MelonLogger.Msg($"{e}");
                     throw;
                 }
+#endif
             }
         }
     }

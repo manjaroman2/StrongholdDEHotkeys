@@ -110,7 +110,6 @@ namespace Ritterschlag
                 for (int i = 0; i < 97; i++)
                 {
                     Hotkeys.KeyMap[(KeyCode)Hotkeys.functionMap[i, 0]] = (Enums.KeyFunctions)i;
-                    // TODO: Implement secondary keybind
                     // functionMap[i, 1]  
                 }
             }

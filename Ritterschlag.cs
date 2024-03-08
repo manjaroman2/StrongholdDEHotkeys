@@ -14,7 +14,6 @@ namespace Ritterschlag
 {
     public class Ritterschlag : MelonMod
     {
-        private static IEnumerable<KeyCode> AllKeyCodes = Enum.GetValues(typeof(KeyCode)).Cast<KeyCode>();
         private static Process currentProc;
 
         /*
@@ -78,25 +77,25 @@ namespace Ritterschlag
             }
             else if (Input.GetKeyDown(KeyCode.K) && Director.gameStarted)
             {
-                foreach (ProcessModule module in Process.GetCurrentProcess().Modules)
-                {
-                    if (module.ModuleName.Contains("Stronghold") || module.ModuleName.Contains("stronghold"))
-                    {
-                        MelonLogger.Msg(module);
-                        MelonLogger.Msg(module.BaseAddress.ToString("X"));
-                        MelonLogger.Msg(module.ModuleName);
-                        MelonLogger.Msg(module.FileName);
-                    }
-                }
-
-                using (MemorySharp memory = new(currentProc))
-                {
-                    int gold = memory["StrongholdDE.dll"].Read<int>(0x1AD000 + 0x1fbd564);
-                    MelonLogger.Msg(gold);
-                    memory["StrongholdDE.dll"].Write(0x1AD000 + 0x1fbd564, gold + 50000);
-                }
-
-                MelonLogger.Msg("+50000");
+                // foreach (ProcessModule module in Process.GetCurrentProcess().Modules)
+                // {
+                //     if (module.ModuleName.Contains("Stronghold") || module.ModuleName.Contains("stronghold"))
+                //     {
+                //         MelonLogger.Msg(module);
+                //         MelonLogger.Msg(module.BaseAddress.ToString("X"));
+                //         MelonLogger.Msg(module.ModuleName);
+                //         MelonLogger.Msg(module.FileName);
+                //     }
+                // }
+                //
+                // using (MemorySharp memory = new(currentProc))
+                // {
+                //     int gold = memory["StrongholdDE.dll"].Read<int>(0x1AD000 + 0x1fbd564);
+                //     MelonLogger.Msg(gold);
+                //     memory["StrongholdDE.dll"].Write(0x1AD000 + 0x1fbd564, gold + 50000);
+                // }
+                //
+                // MelonLogger.Msg("+50000");
 
 
                 // EngineInterface.GameAction(Enums.GameActionCommand.Game_Paused, 0, 0);
