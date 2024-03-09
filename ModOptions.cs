@@ -113,17 +113,6 @@ namespace Ritterschlag
             // this.UpdateMenus();
         }
 
-        [HarmonyPatch(typeof(HUD_Options))]
-        internal static class HUD_Options_Patch
-        {
-            [HarmonyPrefix]
-            [HarmonyPatch(nameof(HUD_Options.ButtonClicked))]
-            private static void ButtonClicked(int param)
-            {
-                MelonLogger.Msg($"HUD_Options.ButtonClicked {param}");
-            }
-        }
-
         [HarmonyPatch(typeof(FrontendMenus))]
         internal static class PATCH_FrontendMenus
         {
@@ -131,7 +120,7 @@ namespace Ritterschlag
             [HarmonyPatch(MethodType.Constructor)]
             private static void FrontEndMenus(FrontendMenus __instance)
             {
-                MelonLogger.Msg($"{__instance} {__instance.Name}");
+                // MelonLogger.Msg($"{__instance} {__instance.Name}");
 
                 Grid FrontEndGrid = (Grid)__instance.Content;
                 Button OptionsButton = (Button) FrontEndGrid.FindName("MainMenu_OptionsButton");
@@ -139,7 +128,7 @@ namespace Ritterschlag
 
                 Button ModsButton = (Button)XamlReader.Parse(ModButtonXml);
                 Grid parent = (Grid)VisualTreeHelper.GetParent(OptionsButton);
-                MelonLogger.Msg(parent);
+                // MelonLogger.Msg(parent);
                 parent.Children.Add(ModsButton);
                 ModsButton.Visibility = Visibility.Visible;
 
@@ -147,10 +136,10 @@ namespace Ritterschlag
                 DoubleAnimationUsingKeyFrames OptionsButtonAnimation = storyboard.Children
                     .OfType<DoubleAnimationUsingKeyFrames>().FirstOrDefault(timeline =>
                         Storyboard.GetTargetName(timeline) == "MainMenu_OptionsButton");
-                MelonLogger.Msg(Storyboard.GetTargetName(OptionsButtonAnimation));
+                // MelonLogger.Msg(Storyboard.GetTargetName(OptionsButtonAnimation));
                 DoubleAnimationUsingKeyFrames ModButtonAnimation =
                     XamlReader.Parse(ModButtonAnimationXml) as DoubleAnimationUsingKeyFrames;
-                MelonLogger.Msg(Storyboard.GetTargetName(ModButtonAnimation));
+                // MelonLogger.Msg(Storyboard.GetTargetName(ModButtonAnimation));
                 storyboard.Children.Add(ModButtonAnimation);
             }
 
@@ -158,7 +147,7 @@ namespace Ritterschlag
             [HarmonyPatch(nameof(FrontendMenus.ButtonClicked))]
             private static void PRE_ButtonClicked(string param)
             {
-                MelonLogger.Msg($"FrontendMenus.ButtonClicked {param}");
+                // MelonLogger.Msg($"FrontendMenus.ButtonClicked {param}");
                 // if (param != "ModOptions") return true;
                 // OpenModOptions();
                 // return false;

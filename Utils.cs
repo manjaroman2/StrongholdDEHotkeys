@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -7,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using MelonLoader;
 using Noesis;
+using NoesisApp;
 
 // ReSharper disable UnusedMember.Global
 
@@ -47,7 +49,7 @@ namespace Ritterschlag
             }
         }
 
-        public static void dumpObject(object obj)
+        public static void ObjectDumpMelonlogger(object obj)
         {
             foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(obj))
             {
@@ -56,17 +58,18 @@ namespace Ritterschlag
             }
         }
 
-        public static void dumpObjectFile(object obj, string filename)
+        public static void ObjectDumpFile(object obj, string filename)
         {
             using StringWriter sr = new();
             foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(obj))
             {
                 sr.WriteLine($"{descriptor.Name}={descriptor.GetValue(obj)}");
             }
+
             File.WriteAllText(filename, sr.ToString());
         }
 
-        public static bool iterateNoesisElement(DependencyObject element, Func<DependencyObject, int, bool> action)
+        public static bool NoesisIterateElement(DependencyObject element, Func<DependencyObject, int, bool> action)
         {
             int childrenCount = VisualTreeHelper.GetChildrenCount(element);
             if (childrenCount == 0)
@@ -79,7 +82,7 @@ namespace Ritterschlag
                 bool flag = false;
                 for (int i = 0; i < childrenCount; i++)
                 {
-                    if (iterateNoesisElement(VisualTreeHelper.GetChild(element, i), action))
+                    if (NoesisIterateElement(VisualTreeHelper.GetChild(element, i), action))
                     {
                         flag = true;
                         break;
@@ -92,15 +95,22 @@ namespace Ritterschlag
             return true;
         }
 
-        public static void iterateNoesisElement(DependencyObject element, Action<DependencyObject, int, int> action,
+        public static void NoesisIterateElement(DependencyObject element, Action<DependencyObject, int, int> action,
             int depth = 0)
         {
             // int childrenCount = VisualTreeHelper.GetChildrenCount(element);
-            int childrenCount = LogicalTreeHelper.GetChildren(element).Cast<DependencyObject>().Count();
+            IEnumerable enumerable = LogicalTreeHelper.GetChildren(element).Cast<object>().ToList();
+            int childrenCount = enumerable.Cast<object>().Count();
             action(element, childrenCount, depth);
-            foreach (DependencyObject child in LogicalTreeHelper.GetChildren(element))
+            foreach (object child in enumerable)
             {
-                iterateNoesisElement(child, action, depth + 1);
+                try
+                {
+                    NoesisIterateElement((DependencyObject)child, action, depth + 1);
+                }
+                catch (InvalidCastException)
+                {
+                }
             }
             // if (childrenCount == 0)
             // {
@@ -115,42 +125,150 @@ namespace Ritterschlag
             // }
         }
 
-        public static StringBuilder iterateNoesisElement(DependencyObject element)
+        public static StringBuilder NoesisIterateElement(DependencyObject element)
         {
             StringBuilder stringBuilder = new();
-            iterateNoesisElement(element,
+            NoesisIterateElement(element,
                 (o, childrenCount, depth) =>
                 {
-                    stringBuilder.Append($"{string.Concat(Enumerable.Repeat(" ", depth))}");
+                    string prefix = string.Concat(Enumerable.Repeat(" ", depth * 2));
+                    stringBuilder.Append($"{prefix}");
                     stringBuilder.Append($"{o.GetType().FullName}");
-                    PropertyInfo nameProperty = o.GetType().GetProperty("Name");
-                    if (nameProperty != null)
-                    {
-                        stringBuilder.Append($"{{");
-                        stringBuilder.Append($"Name=\"{nameProperty.GetValue(o)}\"}}");
-                    }
+
+                    // List<string> Properties = new(new[] { "Name", "ItemsSource" });
+                    stringBuilder.Append($"{{{Environment.NewLine}{prefix}");
+                    stringBuilder.AppendJoin($"{Environment.NewLine}{prefix}",
+                        o.GetType().GetProperties().Select(info => $"{info.Name}=\"{info.GetValue(o)}\"").ToList());
+                    // foreach (PropertyInfo propertyInfo in o.GetType().GetProperties())
+                    // {
+                    //     stringBuilder.Append($"{propertyInfo.Name}=\"{propertyInfo.GetValue(o)}\"");
+                    // }
+                    // foreach (string name in Properties)
+                    // {
+                    //     PropertyInfo propertyInfo = o.GetType().GetProperty(name);
+                    //     if (propertyInfo != null) stringBuilder.Append($"{name}=\"{propertyInfo.GetValue(o)}\"");
+                    // }
+
+                    stringBuilder.Append($"{Environment.NewLine}{prefix}}}");
+
                     stringBuilder.Append(
                         $"|{childrenCount}{Environment.NewLine}");
                 });
             return stringBuilder;
         }
 
-        public static void dumpNoesisElement(DependencyObject element)
+        public static IEnumerable<FrameworkElement> NoesisEnumerateChildrenFrameworkElements(DependencyObject element)
         {
-            MelonLogger.Msg(iterateNoesisElement(element).ToString());
-        }
-
-        public static void dumpNoesisElementToFile(DependencyObject element, string filename)
-        {
-            File.WriteAllText(filename, iterateNoesisElement(element).ToString());
-        }
-
-        public static void iterateResources(FrameworkElement frameworkElement)
-        {
-            MelonLogger.Msg(frameworkElement.Resources);
-            foreach (var resourcesKey in frameworkElement.Resources.Keys)
+            foreach (object child in LogicalTreeHelper.GetChildren(element))
             {
-                MelonLogger.Msg($"{resourcesKey} {frameworkElement.Resources[resourcesKey]}");
+                FrameworkElement frameworkElement = child as FrameworkElement;
+                if (frameworkElement != null)
+                {
+                    yield return frameworkElement;
+                } 
+                DependencyObject dependencyObject = child as DependencyObject;
+                if (dependencyObject == null) continue;
+                foreach (FrameworkElement sub in NoesisEnumerateChildrenFrameworkElements(dependencyObject))
+                {
+                    yield return sub; 
+                }
+            }
+        }
+
+        public static void NoesisDumpElementMelonlogger(DependencyObject element)
+        {
+            MelonLogger.Msg(NoesisIterateElement(element).ToString());
+        }
+
+        public static void NoesisDumpElementToFile(DependencyObject element, string filename)
+        {
+            File.WriteAllText(filename, NoesisIterateElement(element).ToString());
+        }
+
+        public static void NoesisResourcesMelonlogger(ResourceDictionary resourceDictionary)
+        {
+            MelonLogger.Msg(resourceDictionary);
+            foreach (var resourcesKey in resourceDictionary.Keys)
+            {
+                MelonLogger.Msg($"{resourcesKey} {resourceDictionary[resourcesKey]}");
+            }
+        }
+
+        public static class NoesisBehaviorsFixes
+        {
+            /// <summary>
+            /// Fixes detaching behaviours when manipulating UI items.
+            /// </summary>
+            /// <remarks>
+            /// When a visual is removed from visual tree and this visual has an attached behaviours in it
+            /// (or its children) these behaviours gets a notification that they are removed from visual tree
+            /// and detach themselves, but adding them back to tree does not make them reattach.
+            /// This method remembers all objects that were detached and not reattached until returned object
+            /// is disposed and detaches them on dispose.
+            /// </remarks>
+            /// <returns></returns>
+            public static IDisposable GuardDetachingBehaviors()
+            {
+                return new AttachmentTracker();
+            }
+
+            private class AttachmentTracker : IDisposable
+            {
+                private readonly HashSet<AttachableObject> objectsTodetach = new();
+                private readonly PropertyMetadata metadata;
+                private readonly PropertyChangedCallback originalChangeCallback;
+                private bool isDisposed;
+
+                public AttachmentTracker()
+                {
+                    Type type = typeof(AttachableObject);
+                    FieldInfo field = type.GetField("AttachmentProperty", BindingFlags.Static | BindingFlags.NonPublic);
+                    if (field == null)
+                    {
+                        MelonLogger.Msg("AttachmentProperty=null");
+                    }
+
+                    DependencyProperty attachmentProperty = field.GetValue(null) as DependencyProperty;
+                    if (attachmentProperty == null)
+                    {
+                        isDisposed = true;
+                        return;
+                    }
+
+                    metadata = attachmentProperty.GetMetadata(typeof(AttachableObject));
+                    originalChangeCallback = metadata.PropertyChangedCallback;
+                    metadata.PropertyChangedCallback = OnAttachmentChanged;
+                }
+
+                public void Dispose()
+                {
+                    if (!isDisposed)
+                    {
+                        DetachObjects();
+                        metadata.PropertyChangedCallback = originalChangeCallback;
+                        isDisposed = true;
+                    }
+                }
+
+                private void OnAttachmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+                {
+                    if ((Visibility)e.NewValue == (Visibility)(-1))
+                    {
+                        if (d is AttachableObject obj)
+                            objectsTodetach.Add(obj);
+                    }
+                    else
+                    {
+                        if (d is AttachableObject obj)
+                            objectsTodetach.Remove(obj);
+                    }
+                }
+
+                private void DetachObjects()
+                {
+                    foreach (AttachableObject item in objectsTodetach)
+                        item.Detach();
+                }
             }
         }
     }
